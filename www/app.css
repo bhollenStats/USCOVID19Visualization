@@ -1,6 +1,12 @@
-html,body {
-  background-color: #0000cc;
+body {
+  background-image: url("covid-19-virus.jpg");
+  background-size: cover;
+  background-color: #000;
+  color: #fff;
 }
 table {
   font-size: 12px;
+}
+#plotCases {
+  margin-bottom: 15px;
 }

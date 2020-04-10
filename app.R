@@ -10,10 +10,10 @@ library(shiny)
 rm(list=ls())
 
 ui <- fluidPage(
-    titlePanel("United States COVID-19 Data"),
     tags$head(tags$link(rel = 'stylesheet', 
                        type = 'text/css', 
-                       href = 'www/app.css')),
+                       href = 'app.css')),
+    titlePanel("United States COVID-19 Data"),
     selectInput(inputId = 'desiredRegion', 
                 label = 'Select region to view:', 
                 choices = c('Michigan', 'Pennsylvania', 'Ohio'),
@@ -28,8 +28,8 @@ server <- function(input, output, session) {
     
     dfCountyData <- read.csv(file = 'data/us-counties.csv')
     dfStateData <- read.csv(file = 'data/us-states.csv')
-    dfStates <- as.list(dfStateData %>% distinct(state) %>% arrange(state))
-    txtDataDate <- "08-Apr-2020"
+    dfStates <- as.list(dfCountyData %>% distinct(state) %>% arrange(state))
+    txtDataDate <- "09-Apr-2020"
     txtDataSource <- str_c("Data provided by the N.Y. Times [https://github.com/nytimes/covid-19-data] as of ", txtDataDate)
     observe({
         updateSelectInput(session, inputId = 'desiredRegion', choices = dfStates)
@@ -40,15 +40,31 @@ server <- function(input, output, session) {
             filter(state == input$desiredRegion) %>%
             mutate(day = as.numeric(date)) %>%
             select(day, cases, deaths)}, silent = TRUE)
+        maxCases = max(dfResults$cases)
+        maxDeaths = max(dfResults$deaths)
+        maxDay = max(dfResults$day)
+        minDay = min(dfResults$day)
         output$plotCases <- renderPlot({
-            ggplot(data = dfResults, mapping = aes(x = day, y = cases)) +
-                geom_line(colour = 'lightgreen') +
+            ggplot(data = dfResults, mapping = aes(x = day)) +
+                geom_line(aes(y = cases), colour = 'lightgreen') +
                 coord_cartesian() +
                 theme_dark() +
                 labs(y = 'Cases', 
                      x = 'Day', 
                      title = str_c('Cases in ', input$desiredRegion),
-                     subtitle = txtDataSource)
+                     subtitle = txtDataSource) + 
+                annotate("text", 
+                         x = maxDay, 
+                         y = maxCases, 
+                         label = as.character(maxCases),
+                         color = "white",
+                         size = 5) + 
+                annotate("text", 
+                         x = minDay, 
+                         y = maxCases / 20, 
+                         label = as.character(minDay),
+                         color = "white",
+                         size = 5)
         })
         output$plotDeaths <- renderPlot({
             ggplot(data = dfResults, mapping = aes(x = day, y = deaths)) +
@@ -58,7 +74,19 @@ server <- function(input, output, session) {
                 labs(y = 'Deaths', 
                      x = 'Day', 
                      title = str_c('Deaths in ', input$desiredRegion),
-                     subtitle = txtDataSource)
+                     subtitle = txtDataSource) + 
+                annotate("text", 
+                         x = maxDay, 
+                         y = maxDeaths, 
+                         label = as.character(maxDeaths),
+                         color = "white",
+                         size = 5) + 
+                annotate("text", 
+                         x = minDay, 
+                         y = maxDeaths / 20, 
+                         label = as.character(minDay),
+                         color = "white",
+                         size = 5)
         })
     })
 }
