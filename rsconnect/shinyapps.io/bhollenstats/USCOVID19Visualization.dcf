@@ -1,0 +1,12 @@
+name: USCOVID19Visualization
+title: USCOVID19Visualization
+username:
+account: bhollenstats
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2097891
+bundleId: 2998528
+url: https://bhollenstats.shinyapps.io/USCOVID19Visualization/
+when: 1586562701.03067
+asMultiple: FALSE
+asStatic: FALSE
