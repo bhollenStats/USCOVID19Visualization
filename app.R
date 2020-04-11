@@ -29,7 +29,7 @@ server <- function(input, output, session) {
     dfCountyData <- read.csv(file = 'data/us-counties.csv')
     dfStateData <- read.csv(file = 'data/us-states.csv')
     dfStates <- as.list(dfCountyData %>% distinct(state) %>% arrange(state))
-    txtDataDate <- "09-Apr-2020"
+    txtDataDate <- Sys.Date()
     txtDataSource <- str_c("Data provided by the N.Y. Times [https://github.com/nytimes/covid-19-data] as of ", txtDataDate)
     observe({
         updateSelectInput(session, inputId = 'desiredRegion', choices = dfStates)
