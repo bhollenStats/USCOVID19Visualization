@@ -27,7 +27,9 @@ ui <- fluidPage(
                 multiple = FALSE,
                 width = '50%'),
     plotOutput('plotCases'),
-    plotOutput('plotDeaths')
+    plotOutput('plotDeaths'),
+    textOutput('tableHeader'),
+    tableOutput('tableResults')
 )
 
 server <- function(input, output, session) {
@@ -55,7 +57,7 @@ server <- function(input, output, session) {
                     mutate(countyState=str_c(county, " County, ", state)) %>%
                     filter(countyState == input$desiredRegion) %>%
                     mutate(day = as.numeric(date)) %>%
-                    select(day, cases, deaths)
+                    select(date, cases, deaths, day)
             }
             else {
                 dfResults <- dfCountyData %>% 
@@ -63,7 +65,7 @@ server <- function(input, output, session) {
                     group_by(date) %>% 
                     summarise(cases=sum(cases), deaths=sum(deaths)) %>% 
                     mutate(day = as.numeric(date)) %>% 
-                    select(day, cases, deaths)
+                    select(date, cases, deaths, day)
             }}, silent = TRUE)
         maxCases = max(dfResults$cases)
         maxDeaths = max(dfResults$deaths)
@@ -113,6 +115,9 @@ server <- function(input, output, session) {
                          color = "white",
                          size = 5)
         })
+        output$tableHeader <- renderText(str_c('Table for ', input$desiredRegion))        
+        output$tableResults <- renderTable(dfResults %>% mutate(Date=date, Cases=cases, Deaths=deaths) %>% select(Date, Cases, Deaths),
+                                           align="rrr")
     })
 }
 
