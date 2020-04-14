@@ -14,8 +14,14 @@ ui <- fluidPage(
                        type = 'text/css', 
                        href = 'app.css')),
     titlePanel("United States COVID-19 Data"),
+    selectInput(inputId = 'countyOrState',
+                label = 'Select county or state:',
+                choices = c('County', 'State'),
+                selected = 'State',
+                multiple = FALSE,
+                width = '50%'),
     selectInput(inputId = 'desiredRegion', 
-                label = 'Select region to view:', 
+                label = 'Select location to view:', 
                 choices = c('Michigan', 'Pennsylvania', 'Ohio'),
                 selected = 'Michigan',
                 multiple = FALSE,
@@ -29,17 +35,36 @@ server <- function(input, output, session) {
     dfCountyData <- read.csv(file = 'data/us-counties.csv')
     dfStateData <- read.csv(file = 'data/us-states.csv')
     dfStates <- as.list(dfCountyData %>% distinct(state) %>% arrange(state))
+    dfCounties <- as.list(dfCountyData %>% mutate(countyState=str_c(county, " County, ", state)) %>% distinct(countyState) %>% arrange(countyState))
     txtDataDate <- Sys.Date()
     txtDataSource <- str_c("Data provided by the N.Y. Times [https://github.com/nytimes/covid-19-data] as of ", txtDataDate)
-    observe({
-        updateSelectInput(session, inputId = 'desiredRegion', choices = dfStates)
-    })
     
+    observeEvent(input$countyOrState, {
+        if(input$countyOrState=='County') {
+            updateSelectInput(session, inputId = 'desiredRegion', choices = dfCounties)
+        }
+        else {
+            updateSelectInput(session, inputId = 'desiredRegion', choices = dfStates)
+        }
+    })
+
     observeEvent(input$desiredRegion, {
-        try({dfResults <- dfStateData %>%
-            filter(state == input$desiredRegion) %>%
-            mutate(day = as.numeric(date)) %>%
-            select(day, cases, deaths)}, silent = TRUE)
+        try({
+            if(input$countyOrState=='County') {
+                dfResults <- dfCountyData %>%
+                    mutate(countyState=str_c(county, " County, ", state)) %>%
+                    filter(countyState == input$desiredRegion) %>%
+                    mutate(day = as.numeric(date)) %>%
+                    select(day, cases, deaths)
+            }
+            else {
+                dfResults <- dfCountyData %>% 
+                    filter(state == input$desiredRegion) %>% 
+                    group_by(date) %>% 
+                    summarise(cases=sum(cases), deaths=sum(deaths)) %>% 
+                    mutate(day = as.numeric(date)) %>% 
+                    select(day, cases, deaths)
+            }}, silent = TRUE)
         maxCases = max(dfResults$cases)
         maxDeaths = max(dfResults$deaths)
         maxDay = max(dfResults$day)
