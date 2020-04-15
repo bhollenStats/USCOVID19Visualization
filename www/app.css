@@ -13,3 +13,9 @@ table {
 #plotDeaths {
   margin-bottom: 15px;
 }
+#plotDailyCases {
+  margin-bottom: 15px;
+}
+#plotDailyDeaths {
+  margin-bottom: 15px;
+}
