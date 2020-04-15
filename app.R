@@ -34,8 +34,10 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
     
-    dfCountyData <- read.csv(file = 'data/us-counties.csv')
-    dfStateData <- read.csv(file = 'data/us-states.csv')
+    withProgress({dfCountyData <- read_csv(url('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv'))},
+                 message = 'Loading data from github repository', 
+                 detail = 'This could take a few seconds...',
+                 value = 0)
     dfStates <- as.list(dfCountyData %>% distinct(state) %>% arrange(state))
     dfCounties <- as.list(dfCountyData %>% mutate(countyState=str_c(county, " County, ", state)) %>% distinct(countyState) %>% arrange(countyState))
     txtDataDate <- Sys.Date()
@@ -56,7 +58,7 @@ server <- function(input, output, session) {
                 dfResults <- dfCountyData %>%
                     mutate(countyState=str_c(county, " County, ", state)) %>%
                     filter(countyState == input$desiredRegion) %>%
-                    mutate(day = as.numeric(date)) %>%
+                    mutate(day = as.numeric(strftime(date, format = "%j"))) %>%
                     select(date, cases, deaths, day)
             }
             else {
@@ -64,7 +66,7 @@ server <- function(input, output, session) {
                     filter(state == input$desiredRegion) %>% 
                     group_by(date) %>% 
                     summarise(cases=sum(cases), deaths=sum(deaths)) %>% 
-                    mutate(day = as.numeric(date)) %>% 
+                    mutate(day = as.numeric(strftime(date, format = "%j"))) %>%
                     select(date, cases, deaths, day)
             }}, silent = TRUE)
         maxCases = max(dfResults$cases)
@@ -116,7 +118,7 @@ server <- function(input, output, session) {
                          size = 5)
         })
         output$tableHeader <- renderText(str_c('Table for ', input$desiredRegion))        
-        output$tableResults <- renderTable(dfResults %>% mutate(Date=date, Cases=cases, Deaths=deaths) %>% select(Date, Cases, Deaths),
+        output$tableResults <- renderTable(dfResults %>% mutate(Date=as.character(date), Cases=cases, Deaths=deaths) %>% select(Date, Cases, Deaths),
                                            align="rrr")
     })
 }
