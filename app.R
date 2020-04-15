@@ -121,7 +121,8 @@ server <- function(input, output, session) {
         output$tableResults <- renderTable(dfResults %>% 
                                                mutate(Date=as.character(date), Cases=round(cases, digits = 0), Deaths=round(deaths, digits = 0)) %>% 
                                                mutate(NewCases = round(Cases - lag(Cases), digits = 0), NewDeaths = round(Deaths - lag(Deaths), digits = 0)) %>%
-                                               select(Date, Cases, NewCases, Deaths, NewDeaths),
+                                               select(Date, Cases, NewCases, Deaths, NewDeaths) %>%
+                                               arrange(desc(Date)),
                                            align="rrrrr",
                                            digits = 0,
                                            striped = FALSE,
