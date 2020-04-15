@@ -34,7 +34,7 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
     
-    withProgress({dfCountyData <- read_csv(url('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv'))},
+    withProgress({dfCountyData <- read_csv(url('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv'), progress = show_progress())},
                  message = 'Loading data from github repository', 
                  detail = 'This could take a few seconds...',
                  value = 0)
@@ -118,8 +118,14 @@ server <- function(input, output, session) {
                          size = 5)
         })
         output$tableHeader <- renderText(str_c('Table for ', input$desiredRegion))        
-        output$tableResults <- renderTable(dfResults %>% mutate(Date=as.character(date), Cases=cases, Deaths=deaths) %>% select(Date, Cases, Deaths),
-                                           align="rrr")
+        output$tableResults <- renderTable(dfResults %>% 
+                                               mutate(Date=as.character(date), Cases=round(cases, digits = 0), Deaths=round(deaths, digits = 0)) %>% 
+                                               mutate(NewCases = round(Cases - lag(Cases), digits = 0), NewDeaths = round(Deaths - lag(Deaths), digits = 0)) %>%
+                                               select(Date, Cases, NewCases, Deaths, NewDeaths),
+                                           align="rrrrr",
+                                           digits = 0,
+                                           striped = FALSE,
+                                           bordered = TRUE)
     })
 }
 
