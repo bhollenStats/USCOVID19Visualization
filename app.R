@@ -40,6 +40,11 @@ server <- function(input, output, session) {
                  message = 'Loading data from github repository', 
                  detail = 'This could take a few seconds...',
                  value = 0)
+    popDataCounties <- read_csv(file = 'suppdocu/co-est2019-alldata.csv')
+    popDataStates <- popDataCounties %>% 
+        group_by(STNAME,STATE) %>% 
+        select(STNAME, STATE, POPESTIMATE2019) %>%
+        summarize_if(is.numeric, sum, na.rm = TRUE)
     dfStates <- as.list(dfCountyData %>% distinct(state) %>% arrange(state))
     dfCounties <- as.list(dfCountyData %>% mutate(countyState=str_c(county, " County, ", state)) %>% distinct(countyState) %>% arrange(countyState))
     txtDataDate <- Sys.Date()
