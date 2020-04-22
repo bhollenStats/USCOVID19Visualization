@@ -6,6 +6,7 @@
 library(tidyverse)
 library(ggplot2)
 library(shiny)
+library(stringr)
 
 rm(list=ls())
 
@@ -31,7 +32,9 @@ ui <- fluidPage(
     plotOutput('plotCases'),
     plotOutput('plotDeaths'),
     textOutput('tableHeader'),
-    tableOutput('tableResults')
+    tableOutput('tableResults'),
+    tableOutput('headerPerCapitaResults'),
+    tableOutput('tablePerCapitaResults')
 )
 
 server <- function(input, output, session) {
@@ -67,7 +70,7 @@ server <- function(input, output, session) {
                     filter(countyState == input$desiredRegion) %>%
                     mutate(day = as.numeric(strftime(date, format = "%j"))) %>%
                     mutate(dailycases = round(cases - lag(cases), digits = 0), dailydeaths = round(deaths - lag(deaths), digits = 0)) %>%
-                    select(date, cases, deaths, day, dailycases, dailydeaths)
+                    select(date, cases, deaths, day, dailycases, dailydeaths, fips)
             }
             else {
                 dfResults <- dfCountyData %>% 
@@ -184,6 +187,42 @@ server <- function(input, output, session) {
                                            digits = 0,
                                            striped = FALSE,
                                            bordered = TRUE)
+        # Per Capita Result Table
+        if (input$countyOrState=='State') {
+            output$headerPerCapitaResults <- renderText(str_c('Per Capita Data for ', input$desiredRegion, ', per Million Residents [ ', desPop*1000000, ' ]'))
+            desiredPopulation <- popDataCounties %>% 
+                filter(STNAME == input$desiredRegion) %>%
+                filter(COUNTY == 0)
+            desPop = desiredPopulation$POPESTIMATE2019/1000000 #desired population in millions
+            output$tablePerCapitaResults <- renderTable(dfResults %>%
+                                                   mutate(Date=as.character(date), Cases=round(cases/desPop, digits = 5), Deaths=round(deaths/desPop, digits = 5)) %>% 
+                                                   mutate(NewCases = round(dailycases/desPop, digits = 5), NewDeaths = round(dailydeaths/desPop, digits = 5)) %>%
+                                                   select(Date, Cases, NewCases, Deaths, NewDeaths) %>%
+                                                   arrange(desc(Date)),
+                                               align="rrrrr",
+                                               digits = 0,
+                                               striped = FALSE,
+                                               bordered = TRUE)
+        }
+        else {
+            ctyStateNames = str_split(input$desiredRegion, ", ", n = 2)
+            ctyName = ctyStateNames[[1]][1]
+            stateName = ctyStateNames[[1]][2]
+            desiredPopulation <- popDataCounties %>% 
+                filter(CTYNAME == ctyName) %>%
+                filter(STNAME == stateName)
+            desPop = desiredPopulation$POPESTIMATE2019/1000 #desired population in thousands
+            output$headerPerCapitaResults <- renderText(str_c('Per Capita Data for ', input$desiredRegion, ', per Thousand Residents [ ', desPop*1000, ' ]'))
+            output$tablePerCapitaResults <- renderTable(dfResults %>%
+                                                            mutate(Date=as.character(date), Cases=round(cases/desPop, digits = 5), Deaths=round(deaths/desPop, digits = 5)) %>% 
+                                                            mutate(NewCases = round(dailycases/desPop, digits = 5), NewDeaths = round(dailydeaths/desPop, digits = 5)) %>%
+                                                            select(Date, Cases, NewCases, Deaths, NewDeaths) %>%
+                                                            arrange(desc(Date)),
+                                                        align="rrrrr",
+                                                        digits = 0,
+                                                        striped = FALSE,
+                                                        bordered = TRUE)          
+        }
     })
 }
 
