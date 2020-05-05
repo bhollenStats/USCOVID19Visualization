@@ -1,7 +1,8 @@
 body {
   background-image: url("covid-19-virus.jpg");
-  background-size: cover;
+  background-size: contain;
   background-color: #000;
+  background-repeat: no-repeat;
   color: #fff;
 }
 table {
@@ -17,5 +18,8 @@ table {
   margin-bottom: 15px;
 }
 #plotDailyDeaths {
+  margin-bottom: 15px;
+}
+#plotNationalCases {
   margin-bottom: 15px;
 }

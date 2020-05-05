@@ -15,6 +15,7 @@ ui <- fluidPage(
                        type = 'text/css', 
                        href = 'app.css')),
     titlePanel("United States COVID-19 Data"),
+    plotOutput('plotNationalCases', height = '300px'),
     selectInput(inputId = 'countyOrState',
                 label = 'Select county or state:',
                 choices = c('County', 'State'),
@@ -27,10 +28,10 @@ ui <- fluidPage(
                 selected = 'Michigan',
                 multiple = FALSE,
                 width = '50%'),
-    plotOutput('plotDailyCases'),
-    plotOutput('plotDailyDeaths'),
-    plotOutput('plotCases'),
-    plotOutput('plotDeaths'),
+    plotOutput('plotDailyCases', height = '300px'),
+    plotOutput('plotDailyDeaths', height = '300px'),
+    plotOutput('plotCases', height = '300px'),
+    plotOutput('plotDeaths', height = '300px'),
     textOutput('tableHeader'),
     tableOutput('tableResults'),
     tableOutput('headerPerCapitaResults'),
@@ -52,6 +53,40 @@ server <- function(input, output, session) {
     dfCounties <- as.list(dfCountyData %>% mutate(countyState=str_c(county, " County, ", state)) %>% distinct(countyState) %>% arrange(countyState))
     txtDataDate <- Sys.Date()
     txtDataSource <- str_c("Data provided by the N.Y. Times [https://github.com/nytimes/covid-19-data] as of ", txtDataDate)
+    
+    dfNationalResults <- dfCountyData %>% 
+        group_by(date) %>% 
+        summarise(cases=sum(cases), deaths=sum(deaths)) %>%
+        mutate(day = as.numeric(strftime(date, format = "%j"))) %>%
+        mutate(dailycases = round(cases - lag(cases), digits = 0), dailydeaths = round(deaths - lag(deaths), digits = 0))
+
+    maxNationalDailyCases = max(dfNationalResults$dailycases)
+    maxNationalDay = max(dfNationalResults$day)
+    minNationalDay = min(dfNationalResults$day)
+    
+    output$plotNationalCases <- renderPlot({
+        ggplot(data = dfNationalResults, mapping = aes(x = day)) +
+            geom_line(aes(y = dailycases), colour = 'lightgreen') +
+            geom_smooth(aes(y = dailycases), colour = 'black', show.legend = TRUE) +
+            coord_cartesian() +
+            theme_dark() +
+            labs(y = 'Cases', 
+                 x = 'Day', 
+                 title = 'Daily National Cases',
+                 subtitle = txtDataSource) + 
+            annotate("text", 
+                     x = maxNationalDay, 
+                     y = maxNationalDailyCases, 
+                     label = as.character(maxNationalDailyCases),
+                     color = "white",
+                     size = 5) + 
+            annotate("text", 
+                     x = minNationalDay, 
+                     y = maxNationalDailyCases / 20, 
+                     label = as.character(minNationalDay),
+                     color = "white",
+                     size = 5)
+    })
     
     observeEvent(input$countyOrState, {
         if(input$countyOrState=='County') {
