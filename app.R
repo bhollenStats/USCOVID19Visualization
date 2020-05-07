@@ -7,6 +7,7 @@ library(tidyverse)
 library(ggplot2)
 library(shiny)
 library(stringr)
+library(zoo)
 
 rm(list=ls())
 
@@ -15,6 +16,12 @@ ui <- fluidPage(
                        type = 'text/css', 
                        href = 'app.css')),
     titlePanel("United States COVID-19 Data"),
+    radioButtons(inputId = 'calculationType', 
+                 label = 'Select display mode for the graph of national cases:', 
+                 choices = c('Daily', 'Seven Day Average'),
+                 selected = 'Daily', 
+                 inline = TRUE, 
+                 width = '50%'),
     plotOutput('plotNationalCases', height = '300px'),
     selectInput(inputId = 'countyOrState',
                 label = 'Select county or state:',
@@ -32,10 +39,10 @@ ui <- fluidPage(
     plotOutput('plotDailyDeaths', height = '300px'),
     plotOutput('plotCases', height = '300px'),
     plotOutput('plotDeaths', height = '300px'),
-    textOutput('tableHeader'),
-    tableOutput('tableResults'),
     tableOutput('headerPerCapitaResults'),
-    tableOutput('tablePerCapitaResults')
+    tableOutput('tablePerCapitaResults'),
+    textOutput('tableHeader'),
+    tableOutput('tableResults')
 )
 
 server <- function(input, output, session) {
@@ -58,35 +65,126 @@ server <- function(input, output, session) {
         group_by(date) %>% 
         summarise(cases=sum(cases), deaths=sum(deaths)) %>%
         mutate(day = as.numeric(strftime(date, format = "%j"))) %>%
-        mutate(dailycases = round(cases - lag(cases), digits = 0), dailydeaths = round(deaths - lag(deaths), digits = 0))
+        mutate(dailycases = round(cases - lag(cases), digits = 0), 
+               dailydeaths = round(deaths - lag(deaths), digits = 0)) %>%
+        mutate(r7daDailyCases = rollmean(dailycases, 7, fill = NA), 
+               r7daDailyDeaths = rollmean(dailydeaths, 7, fill = NA))
 
-    maxNationalDailyCases = max(dfNationalResults$dailycases)
-    maxNationalDay = max(dfNationalResults$day)
-    minNationalDay = min(dfNationalResults$day)
-    
     output$plotNationalCases <- renderPlot({
-        ggplot(data = dfNationalResults, mapping = aes(x = day)) +
-            geom_line(aes(y = dailycases), colour = 'lightgreen') +
-            geom_smooth(aes(y = dailycases), colour = 'black', show.legend = TRUE) +
-            coord_cartesian() +
-            theme_dark() +
-            labs(y = 'Cases', 
-                 x = 'Day', 
-                 title = 'Daily National Cases',
-                 subtitle = txtDataSource) + 
-            annotate("text", 
-                     x = maxNationalDay, 
-                     y = maxNationalDailyCases, 
-                     label = as.character(maxNationalDailyCases),
-                     color = "white",
-                     size = 5) + 
-            annotate("text", 
-                     x = minNationalDay, 
-                     y = maxNationalDailyCases / 20, 
-                     label = as.character(minNationalDay),
-                     color = "white",
-                     size = 5)
+        if (input$calculationType == 'Daily') {
+            
+            maxNationalDailyCases = max(dfNationalResults$dailycases)
+            maxNationalDay = max(dfNationalResults$day)
+            minNationalDay = min(dfNationalResults$day)
+            
+            ggplot(data = dfNationalResults, mapping = aes(x = day)) +
+                geom_line(aes(y = dailycases), colour = 'lightgreen') +
+                geom_smooth(aes(y = dailycases), colour = 'black', show.legend = TRUE) +
+                coord_cartesian() +
+                theme_dark() +
+                labs(y = 'Cases', 
+                     x = 'Day', 
+                     title = 'Daily National Cases',
+                     subtitle = txtDataSource) + 
+                annotate("text", 
+                         x = maxNationalDay, 
+                         y = maxNationalDailyCases, 
+                         label = as.character(maxNationalDailyCases),
+                         color = "white",
+                         size = 5) + 
+                annotate("text", 
+                         x = minNationalDay, 
+                         y = maxNationalDailyCases / 20, 
+                         label = as.character(minNationalDay),
+                         color = "white",
+                         size = 5)       
+            } else {
+                
+            maxNationalDailyCases = max(dfNationalResults$r7daDailyCases)
+            maxNationalDay = max(dfNationalResults$r7daDailyCases)
+            minNationalDay = min(dfNationalResults$r7daDailyCases)
+            
+            ggplot(data = dfNationalResults, mapping = aes(x = day)) +
+                geom_line(aes(y = r7daDailyCases), colour = 'lightgreen') +
+                geom_smooth(aes(y = r7daDailyCases), colour = 'black', show.legend = TRUE) +
+                coord_cartesian() +
+                theme_dark() +
+                labs(y = 'Cases', 
+                     x = 'Day', 
+                     title = 'Seven Day Average National Cases',
+                     subtitle = txtDataSource) + 
+                annotate("text", 
+                         x = maxNationalDay, 
+                         y = maxNationalDailyCases, 
+                         label = as.character(maxNationalDailyCases),
+                         color = "white",
+                         size = 5) + 
+                annotate("text", 
+                         x = minNationalDay, 
+                         y = maxNationalDailyCases / 20, 
+                         label = as.character(minNationalDay),
+                         color = "white",
+                         size = 5)    
+        }
     })
+
+    observeEvent(input$calculationType, {
+        if (input$calculationType == 'Daily') {
+            
+            maxNationalDailyCases = max(dfNationalResults$dailycases)
+            maxNationalDay = max(dfNationalResults$day)
+            minNationalDay = min(dfNationalResults$day)
+            
+            ggplot(data = dfNationalResults, mapping = aes(x = day)) +
+                geom_line(aes(y = dailycases), colour = 'lightgreen') +
+                geom_smooth(aes(y = dailycases), colour = 'black', show.legend = TRUE) +
+                coord_cartesian() +
+                theme_dark() +
+                labs(y = 'Cases', 
+                     x = 'Day', 
+                     title = 'Daily National Cases',
+                     subtitle = txtDataSource) + 
+                annotate("text", 
+                         x = maxNationalDay, 
+                         y = maxNationalDailyCases, 
+                         label = as.character(maxNationalDailyCases),
+                         color = "white",
+                         size = 5) + 
+                annotate("text", 
+                         x = minNationalDay, 
+                         y = maxNationalDailyCases / 20, 
+                         label = as.character(minNationalDay),
+                         color = "white",
+                         size = 5)       
+        } else {
+            
+            maxNationalDailyCases = max(dfNationalResults$r7daDailyCases)
+            maxNationalDay = max(dfNationalResults$r7daDailyCases)
+            minNationalDay = min(dfNationalResults$r7daDailyCases)
+            
+            ggplot(data = dfNationalResults, mapping = aes(x = day)) +
+                geom_line(aes(y = r7daDailyCases), colour = 'lightgreen') +
+                geom_smooth(aes(y = r7daDailyCases), colour = 'black', show.legend = TRUE) +
+                coord_cartesian() +
+                theme_dark() +
+                labs(y = 'Cases', 
+                     x = 'Day', 
+                     title = 'Seven Day Average National Cases',
+                     subtitle = txtDataSource) + 
+                annotate("text", 
+                         x = maxNationalDay, 
+                         y = maxNationalDailyCases, 
+                         label = as.character(maxNationalDailyCases),
+                         color = "white",
+                         size = 5) + 
+                annotate("text", 
+                         x = minNationalDay, 
+                         y = maxNationalDailyCases / 20, 
+                         label = as.character(minNationalDay),
+                         color = "white",
+                         size = 5)    
+        }
+    })  
     
     observeEvent(input$countyOrState, {
         if(input$countyOrState=='County') {
