@@ -5,8 +5,8 @@ account: bhollenstats
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 2097891
-bundleId: 3113733
+bundleId: 3118723
 url: https://bhollenstats.shinyapps.io/USCOVID19Visualization/
-when: 1588815111.44168
+when: 1588901252.93845
 asMultiple: FALSE
 asStatic: FALSE
