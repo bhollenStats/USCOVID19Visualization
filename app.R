@@ -14,6 +14,7 @@ rm(list=ls())
 g_calcType <- 'Daily'
 g_desiredRegion <- 'Michigan'
 g_countyOrState <- 'State'
+idF <- 'TBD'
 
 createPlot <- function(inPlotData, 
                        plotColor = 'lightgreen', 
@@ -117,7 +118,8 @@ ui <- fluidPage(
                 width = '50%'),
     actionButton(inputId = "visualizeIt", 
                  label = 'Visualize Data'),
-    plotOutput('plotNationalCases', height = '300px'),
+    plotOutput('plotNationalCases', height = '300px', brush = 'plot_brush'),
+    verbatimTextOutput('info'),
     plotOutput('plotDailyCases', height = '300px'),
     plotOutput('plotDailyDeaths', height = '300px'),
     plotOutput('plotCases', height = '300px'),
@@ -159,7 +161,7 @@ server <- function(input, output, session) {
                dailydeaths = round(deaths - lag(deaths), digits = 0)) %>%
         mutate(r7daDailyCases = rollmean(dailycases, 7, fill = NA), 
                r7daDailyDeaths = rollmean(dailydeaths, 7, fill = NA))
-
+        
     observeEvent(input$calculationType, {
         g_calcType <<- input$calculationType  
     })
@@ -178,6 +180,12 @@ server <- function(input, output, session) {
         g_countyOrState <<- input$countyOrState
     })    
     
+    output$info <- renderPrint({
+        try({
+        brushedPoints(idF, input$plot_brush, xvar = "day", yvar = "cases")
+        })
+    })
+    
     # This button will do it all now, especially to help with the performance of the site,
     # and all plots will be rendered based on the selection of daily or seven day averages
     # in the end, but now just move it into this button event
@@ -193,6 +201,7 @@ server <- function(input, output, session) {
             if (cT == 'Daily') {
                 df <- dfNationalResults %>%
                     mutate(cases = dailycases)
+                idF <<- df
                 maxCases = round(max(df$cases, na.rm = TRUE), digits = 0)
                 maxDay = max(df$day, na.rm = TRUE)
                 minDay = min(df$day, na.rm = TRUE)
@@ -207,6 +216,7 @@ server <- function(input, output, session) {
             } else {
                 df <- dfNationalResults %>%
                     mutate(cases = r7daDailyCases)
+                idF <<- df
                 maxCases = round(max(df$cases, na.rm = TRUE), digits = 0)
                 maxDay = max(df$day, na.rm = TRUE)
                 minDay = min(df$day, na.rm = TRUE)
