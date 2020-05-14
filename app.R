@@ -14,7 +14,11 @@ rm(list=ls())
 g_calcType <- 'Daily'
 g_desiredRegion <- 'Michigan'
 g_countyOrState <- 'State'
-idF <- 'TBD'
+g_dfNR <- 'TBD'
+g_df_1 <- 'TBD'
+g_df_2 <- 'TBD'
+g_df_3 <- 'TBD'
+g_df_4 <- 'TBD'
 
 createPlot <- function(inPlotData, 
                        plotColor = 'lightgreen', 
@@ -119,11 +123,15 @@ ui <- fluidPage(
     actionButton(inputId = "visualizeIt", 
                  label = 'Visualize Data'),
     plotOutput('plotNationalCases', height = '300px', brush = 'plot_brush'),
-    verbatimTextOutput('info'),
-    plotOutput('plotDailyCases', height = '300px'),
-    plotOutput('plotDailyDeaths', height = '300px'),
-    plotOutput('plotCases', height = '300px'),
-    plotOutput('plotDeaths', height = '300px'),
+    verbatimTextOutput('infoNR'),
+    plotOutput('plotDailyCases', height = '300px', brush = 'plot_brush_g_df_1'),
+    verbatimTextOutput('info_g_df_1'),
+    plotOutput('plotDailyDeaths', height = '300px', brush = 'plot_brush_g_df_2'),
+    verbatimTextOutput('info_g_df_2'),
+    plotOutput('plotCases', height = '300px', brush = 'plot_brush_g_df_3'),
+    verbatimTextOutput('info_g_df_3'),
+    plotOutput('plotDeaths', height = '300px', brush = 'plot_brush_g_df_4'),
+    verbatimTextOutput('info_g_df_4'),
     tableOutput('headerPerCapitaResults'),
     tableOutput('tablePerCapitaResults'),
     textOutput('tableHeader'),
@@ -180,12 +188,35 @@ server <- function(input, output, session) {
         g_countyOrState <<- input$countyOrState
     })    
     
-    output$info <- renderPrint({
+    output$infoNR <- renderPrint({
         try({
-        brushedPoints(idF, input$plot_brush, xvar = "day", yvar = "cases")
+        brushedPoints(g_dfNR, input$plot_brush, xvar = "day", yvar = "cases")
         })
     })
     
+    output$info_g_df_1 <- renderPrint({
+        try({
+            brushedPoints(g_df_1, input$plot_brush_g_df_1, xvar = "day", yvar = "cases")
+        })
+    }) 
+
+    output$info_g_df_2 <- renderPrint({
+        try({
+            brushedPoints(g_df_2, input$plot_brush_g_df_2, xvar = "day", yvar = "cases")
+        })
+    }) 
+
+    output$info_g_df_3 <- renderPrint({
+        try({
+            brushedPoints(g_df_3, input$plot_brush_g_df_3, xvar = "day", yvar = "cases")
+        })
+    }) 
+    
+    output$info_g_df_4 <- renderPrint({
+        try({
+            brushedPoints(g_df_4, input$plot_brush_g_df_4, xvar = "day", yvar = "cases")
+        })
+    }) 
     # This button will do it all now, especially to help with the performance of the site,
     # and all plots will be rendered based on the selection of daily or seven day averages
     # in the end, but now just move it into this button event
@@ -201,7 +232,7 @@ server <- function(input, output, session) {
             if (cT == 'Daily') {
                 df <- dfNationalResults %>%
                     mutate(cases = dailycases)
-                idF <<- df
+                g_dfNR <<- df
                 maxCases = round(max(df$cases, na.rm = TRUE), digits = 0)
                 maxDay = max(df$day, na.rm = TRUE)
                 minDay = min(df$day, na.rm = TRUE)
@@ -216,7 +247,7 @@ server <- function(input, output, session) {
             } else {
                 df <- dfNationalResults %>%
                     mutate(cases = r7daDailyCases)
-                idF <<- df
+                g_dfNR <<- df
                 maxCases = round(max(df$cases, na.rm = TRUE), digits = 0)
                 maxDay = max(df$day, na.rm = TRUE)
                 minDay = min(df$day, na.rm = TRUE)
@@ -256,13 +287,13 @@ server <- function(input, output, session) {
         
         # Daily Cases in Region Selected
         if (cT == 'Daily') {
-            df_1 <- dfResults %>%
+            g_df_1 <<- dfResults %>%
                 mutate(cases = dailycases)
-            maxCases_1 = round(max(df_1$cases, na.rm = TRUE), digits = 0)
-            maxDay_1 = max(df_1$day, na.rm = TRUE)
-            minDay_1 = min(df_1$day, na.rm = TRUE)
+            maxCases_1 = round(max(g_df_1$cases, na.rm = TRUE), digits = 0)
+            maxDay_1 = max(g_df_1$day, na.rm = TRUE)
+            minDay_1 = min(g_df_1$day, na.rm = TRUE)
             output$plotDailyCases <- renderPlot({
-                createPlot(df_1,  
+                createPlot(g_df_1,  
                            plotColor = 'lightblue', 
                            plotTitle = str_c('Daily Cases in ', dR), 
                            plotSubtitle = txtDataSource,
@@ -272,13 +303,13 @@ server <- function(input, output, session) {
                            plotTrend = TRUE)
             })
         } else {
-            df_1 <- dfResults %>%
+            g_df_1 <<- dfResults %>%
                 mutate(cases = r7daDailyCases)
-            maxCases_1 = round(max(df_1$cases, na.rm = TRUE), digits = 0)
-            maxDay_1 = max(df_1$day, na.rm = TRUE)
-            minDay_1 = min(df_1$day, na.rm = TRUE)
+            maxCases_1 = round(max(g_df_1$cases, na.rm = TRUE), digits = 0)
+            maxDay_1 = max(g_df_1$day, na.rm = TRUE)
+            minDay_1 = min(g_df_1$day, na.rm = TRUE)
             output$plotDailyCases <- renderPlot({
-                createPlot(df_1,
+                createPlot(g_df_1,
                            plotColor = 'lightgreen',
                            plotTitle = str_c('Seven Day Average Cases in ', dR),
                            plotSubtitle = txtDataSource,
@@ -291,13 +322,13 @@ server <- function(input, output, session) {
 
         # Daily Deaths in Region Selected
         if (cT == 'Daily') {
-            df_2 <- dfResults %>%
+            g_df_2 <<- dfResults %>%
                 mutate(cases = dailydeaths)
-            maxCases_2 = round(max(df_2$cases, na.rm = TRUE), digits = 0)
-            maxDay_2 = max(df_2$day, na.rm = TRUE)
-            minDay_2 = min(df_2$day, na.rm = TRUE)
+            maxCases_2 = round(max(g_df_2$cases, na.rm = TRUE), digits = 0)
+            maxDay_2 = max(g_df_2$day, na.rm = TRUE)
+            minDay_2 = min(g_df_2$day, na.rm = TRUE)
             output$plotDailyDeaths <- renderPlot({
-                createPlot(df_2,  
+                createPlot(g_df_2,  
                            plotColor = 'lightblue', 
                            plotTitle = str_c('Daily Deaths in ', dR), 
                            plotSubtitle = txtDataSource,
@@ -307,13 +338,13 @@ server <- function(input, output, session) {
                            plotTrend = TRUE)            
             })
         } else {
-            df_2 <- dfResults %>%
+            g_df_2 <<- dfResults %>%
                 mutate(cases = r7daDailyDeaths)
-            maxCases_2 = round(max(df_2$cases, na.rm = TRUE), digits = 0)
-            maxDay_2 = max(df_2$day, na.rm = TRUE)
-            minDay_2 = min(df_2$day, na.rm = TRUE)
+            maxCases_2 = round(max(g_df_2$cases, na.rm = TRUE), digits = 0)
+            maxDay_2 = max(g_df_2$day, na.rm = TRUE)
+            minDay_2 = min(g_df_2$day, na.rm = TRUE)
             output$plotDailyDeaths <- renderPlot({
-                createPlot(df_2,  
+                createPlot(g_df_2,  
                            plotColor = 'lightgreen', 
                            plotTitle = str_c('Seven Day Average Deaths in ', dR), 
                            plotSubtitle = txtDataSource,
@@ -325,12 +356,12 @@ server <- function(input, output, session) {
         }        
         
         # Accumulating Cases in Region Selected
-        df_3 <- dfResults
-        maxCases_3 = round(max(df_3$cases, na.rm = TRUE), digits = 0)
-        maxDay_3 = max(df_3$day, na.rm = TRUE)
-        minDay_3 = min(df_3$day, na.rm = TRUE)        
+        g_df_3 <<- dfResults
+        maxCases_3 = round(max(g_df_3$cases, na.rm = TRUE), digits = 0)
+        maxDay_3 = max(g_df_3$day, na.rm = TRUE)
+        minDay_3 = min(g_df_3$day, na.rm = TRUE)        
         output$plotCases <- renderPlot({
-            createPlot(df_3,  
+            createPlot(g_df_3,  
                        plotColor = 'lightblue', 
                        plotTitle = str_c('Accumulated Cases in ', dR), 
                        plotSubtitle = txtDataSource,
@@ -340,13 +371,13 @@ server <- function(input, output, session) {
         })
         
         # Accumulating Deaths in Region Selected
-        df_4 <- dfResults %>%
+        g_df_4 <<- dfResults %>%
             mutate(cases = deaths)
-        maxCases_4 = round(max(df_4$cases, na.rm = TRUE), digits = 0)
-        maxDay_4 = max(df_4$day, na.rm = TRUE)
-        minDay_4 = min(df_4$day, na.rm = TRUE)          
+        maxCases_4 = round(max(g_df_4$cases, na.rm = TRUE), digits = 0)
+        maxDay_4 = max(g_df_4$day, na.rm = TRUE)
+        minDay_4 = min(g_df_4$day, na.rm = TRUE)          
         output$plotDeaths <- renderPlot({
-            createPlot(df_4,  
+            createPlot(g_df_4,  
                        plotColor = 'lightblue', 
                        plotTitle = str_c('Accumulated Deaths in ', dR), 
                        plotSubtitle = txtDataSource,

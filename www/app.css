@@ -9,23 +9,40 @@ table {
   font-size: 12px;
 }
 #plotCases {
-  margin-bottom: 15px;
+  margin-bottom: 0;
 }
 #plotDeaths {
-  margin-bottom: 15px;
+  margin-bottom: 0;
 }
 #plotDailyCases {
-  margin-bottom: 15px;
+  margin-bottom: 0;
 }
 #plotDailyDeaths {
-  margin-bottom: 15px;
+  margin-bottom: 0;
 }
 #plotNationalCases {
-  margin-bottom: 15px;
+  margin-bottom: 0;
 }
 #visualizeIt {
   margin-bottom: 15px;
 }
-#info {
-  margin-top: 0px;
+#infoNR{
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+#info_g_df_1{
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+#info_g_df_2{
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+#info_g_df_3{
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+#info_g_df_4{
+  margin-top: 0;
+  margin-bottom: 15px;
 }
