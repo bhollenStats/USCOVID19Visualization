@@ -20,6 +20,12 @@ g_df_2 <- 'TBD'
 g_df_3 <- 'TBD'
 g_df_4 <- 'TBD'
 
+# dfNationalResults %>% 
+#   ggplot() + 
+#   geom_col(mapping=aes(x=day, y=dailycases), color='slateblue1') + 
+#   geom_line(mapping=aes(x=day, y=r7daDailyCases), color='#00ff00') + 
+#   theme_dark()
+
 createPlot <- function(inPlotData, 
                        plotColor = 'lightgreen', 
                        plotTitle = 'PLOT_TITLE', 
@@ -31,7 +37,8 @@ createPlot <- function(inPlotData,
     if (isTRUE(plotMaxCases > 0) && isTRUE(plotMaxDay > 0) && isTRUE(plotMinDay > 0)) {
         if (plotTrend) {
             ggplot(data = inPlotData, mapping = aes(x = day)) +
-                geom_line(aes(y = cases), colour = plotColor) +
+                geom_col(aes(y = cases), colour = 'slateblue1') +
+                geom_line(aes(y = cases7d), colour = plotColor) +
                 geom_smooth(aes(y = cases), colour = 'black', show.legend = TRUE) +
                 coord_cartesian() +
                 theme_dark() +
@@ -53,7 +60,8 @@ createPlot <- function(inPlotData,
                          size = 5)
         } else {
             ggplot(data = inPlotData, mapping = aes(x = day)) +
-                geom_line(aes(y = cases), colour = plotColor) +
+                geom_col(aes(y = cases), colour = 'slateblue1') +
+                geom_line(aes(y = cases7d), colour = plotColor) +
                 coord_cartesian() +
                 theme_dark() +
                 labs(y = 'Cases++',
@@ -76,7 +84,8 @@ createPlot <- function(inPlotData,
     } else {
         if (plotTrend) {
             ggplot(data = inPlotData, mapping = aes(x = day)) +
-                geom_line(aes(y = cases), colour = plotColor) +
+                geom_col(aes(y = cases), colour = 'slateblue1') +
+                geom_line(aes(y = cases7d), colour = plotColor) +
                 geom_smooth(aes(y = cases), colour = 'black', show.legend = TRUE) +
                 coord_cartesian() +
                 theme_dark() +
@@ -86,7 +95,8 @@ createPlot <- function(inPlotData,
                      subtitle = plotSubtitle)   
         } else {
             ggplot(data = inPlotData, mapping = aes(x = day)) +
-                geom_line(aes(y = cases), colour = plotColor) +
+                geom_col(aes(y = cases), colour = 'slateblue1') +
+                geom_line(aes(y = cases7d), colour = plotColor) +
                 coord_cartesian() +
                 theme_dark() +
                 labs(y = 'Cases--',
@@ -231,7 +241,7 @@ server <- function(input, output, session) {
             
             if (cT == 'Daily') {
                 df <- dfNationalResults %>%
-                    mutate(cases = dailycases)
+                    mutate(cases = dailycases, cases7d = r7daDailyCases)
                 g_dfNR <<- df
                 maxCases = round(max(df$cases, na.rm = TRUE), digits = 0)
                 maxDay = max(df$day, na.rm = TRUE)
@@ -243,10 +253,10 @@ server <- function(input, output, session) {
                            plotMaxCases = maxCases,
                            plotMaxDay = maxDay,
                            plotMinDay = minDay,
-                           plotTrend = TRUE)
+                           plotTrend = FALSE)
             } else {
                 df <- dfNationalResults %>%
-                    mutate(cases = r7daDailyCases)
+                    mutate(cases = dailycases, cases7d = r7daDailyCases)
                 g_dfNR <<- df
                 maxCases = round(max(df$cases, na.rm = TRUE), digits = 0)
                 maxDay = max(df$day, na.rm = TRUE)
@@ -258,7 +268,7 @@ server <- function(input, output, session) {
                            plotMaxCases = maxCases,
                            plotMaxDay = maxDay,
                            plotMinDay = minDay,
-                           plotTrend = TRUE)
+                           plotTrend = FALSE)
             }
         })
         
@@ -288,7 +298,7 @@ server <- function(input, output, session) {
         # Daily Cases in Region Selected
         if (cT == 'Daily') {
             g_df_1 <<- dfResults %>%
-                mutate(cases = dailycases)
+                mutate(cases = dailycases, cases7d = r7daDailyCases)
             maxCases_1 = round(max(g_df_1$cases, na.rm = TRUE), digits = 0)
             maxDay_1 = max(g_df_1$day, na.rm = TRUE)
             minDay_1 = min(g_df_1$day, na.rm = TRUE)
@@ -300,11 +310,11 @@ server <- function(input, output, session) {
                            plotMaxCases = maxCases_1,
                            plotMaxDay = maxDay_1,
                            plotMinDay = minDay_1,
-                           plotTrend = TRUE)
+                           plotTrend = FALSE)
             })
         } else {
             g_df_1 <<- dfResults %>%
-                mutate(cases = r7daDailyCases)
+                mutate(cases = dailycases, cases7d = r7daDailyCases)
             maxCases_1 = round(max(g_df_1$cases, na.rm = TRUE), digits = 0)
             maxDay_1 = max(g_df_1$day, na.rm = TRUE)
             minDay_1 = min(g_df_1$day, na.rm = TRUE)
@@ -316,14 +326,14 @@ server <- function(input, output, session) {
                            plotMaxCases = maxCases_1,
                            plotMaxDay = maxDay_1,
                            plotMinDay = minDay_1,
-                           plotTrend = TRUE)
+                           plotTrend = FALSE)
             })
         }
 
         # Daily Deaths in Region Selected
         if (cT == 'Daily') {
             g_df_2 <<- dfResults %>%
-                mutate(cases = dailydeaths)
+                mutate(cases = dailydeaths, cases7d = r7daDailyDeaths)
             maxCases_2 = round(max(g_df_2$cases, na.rm = TRUE), digits = 0)
             maxDay_2 = max(g_df_2$day, na.rm = TRUE)
             minDay_2 = min(g_df_2$day, na.rm = TRUE)
@@ -335,11 +345,11 @@ server <- function(input, output, session) {
                            plotMaxCases = maxCases_2,
                            plotMaxDay = maxDay_2,
                            plotMinDay = minDay_2,
-                           plotTrend = TRUE)            
+                           plotTrend = FALSE)            
             })
         } else {
             g_df_2 <<- dfResults %>%
-                mutate(cases = r7daDailyDeaths)
+                mutate(cases = dailydeaths, cases7d = r7daDailyDeaths)
             maxCases_2 = round(max(g_df_2$cases, na.rm = TRUE), digits = 0)
             maxDay_2 = max(g_df_2$day, na.rm = TRUE)
             minDay_2 = min(g_df_2$day, na.rm = TRUE)
@@ -351,7 +361,7 @@ server <- function(input, output, session) {
                            plotMaxCases = maxCases_2,
                            plotMaxDay = maxDay_2,
                            plotMinDay = minDay_2,
-                           plotTrend = TRUE)            
+                           plotTrend = FALSE)            
             })
         }        
         
