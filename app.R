@@ -200,7 +200,7 @@ server <- function(input, output, session) {
         mutate(dailycases = round(cases - lag(cases), digits = 0)) %>%
         mutate(r7daDailyCases = rollmean(dailycases, 7, fill = NA)) %>%
         mutate(day = as.numeric(strftime(date, format = "%j"))) %>%
-        filter(state == dfTopTenHotspots$state[[1]] |
+        filter(state == dfTopTenHotspots$state[1] |
                    state == dfTopTenHotspots$state[2] |
                    state == dfTopTenHotspots$state[3] |
                    state == dfTopTenHotspots$state[4] |
@@ -295,12 +295,12 @@ server <- function(input, output, session) {
         output$plotTopTenHotspots <- renderPlot({
             my.colors <- c("State1"="chocolate3", 
                            "State2"="deeppink", 
-                           "State3"="linen", 
+                           "State3"="black", 
                            "State4"="navyblue",
                            "State5"="blueviolet",
                            "State6"="orange3",
                            "State7"="red4",
-                           "State8"="chartreuse4",
+                           "State8"="lightblue",
                            "State9"="forestgreen",
                            "State10"="darkmagenta")
             my.labels <- c(dfTopTenHotspots[[1]][1], 
