@@ -20,6 +20,11 @@ g_df_2 <- 'TBD'
 g_df_3 <- 'TBD'
 g_df_4 <- 'TBD'
 
+# dfNationalResults %>% 
+#   ggplot() + 
+#   geom_col(mapping=aes(x=day, y=dailycases), color='slateblue1') + 
+#   geom_line(mapping=aes(x=day, y=r7daDailyCases), color='#00ff00') + 
+#   theme_dark()
 createPlot <- function(inPlotData, 
                        plotColor = 'lightgreen', 
                        plotTitle = 'PLOT_TITLE', 
@@ -31,7 +36,8 @@ createPlot <- function(inPlotData,
     if (isTRUE(plotMaxCases > 0) && isTRUE(plotMaxDay > 0) && isTRUE(plotMinDay > 0)) {
         if (plotTrend) {
             ggplot(data = inPlotData, mapping = aes(x = day)) +
-                geom_line(aes(y = cases), colour = plotColor) +
+                geom_col(aes(y = cases), colour = 'slateblue1') +
+                geom_line(aes(y = cases7d), colour = plotColor) +
                 geom_smooth(aes(y = cases), colour = 'black', show.legend = TRUE) +
                 coord_cartesian() +
                 theme_dark() +
@@ -53,7 +59,8 @@ createPlot <- function(inPlotData,
                          size = 5)
         } else {
             ggplot(data = inPlotData, mapping = aes(x = day)) +
-                geom_line(aes(y = cases), colour = plotColor) +
+                geom_col(aes(y = cases), colour = 'slateblue1') +
+                geom_line(aes(y = cases7d), colour = plotColor) +
                 coord_cartesian() +
                 theme_dark() +
                 labs(y = 'Cases++',
@@ -76,7 +83,8 @@ createPlot <- function(inPlotData,
     } else {
         if (plotTrend) {
             ggplot(data = inPlotData, mapping = aes(x = day)) +
-                geom_line(aes(y = cases), colour = plotColor) +
+                geom_col(aes(y = cases), colour = 'slateblue1') +
+                geom_line(aes(y = cases7d), colour = plotColor) +
                 geom_smooth(aes(y = cases), colour = 'black', show.legend = TRUE) +
                 coord_cartesian() +
                 theme_dark() +
@@ -86,7 +94,8 @@ createPlot <- function(inPlotData,
                      subtitle = plotSubtitle)   
         } else {
             ggplot(data = inPlotData, mapping = aes(x = day)) +
-                geom_line(aes(y = cases), colour = plotColor) +
+                geom_col(aes(y = cases), colour = 'slateblue1') +
+                geom_line(aes(y = cases7d), colour = plotColor) +
                 coord_cartesian() +
                 theme_dark() +
                 labs(y = 'Cases--',
@@ -102,12 +111,6 @@ ui <- fluidPage(
                        type = 'text/css', 
                        href = 'app.css')),
     titlePanel("United States COVID-19 Data"),
-    radioButtons(inputId = 'calculationType', 
-                 label = 'Select display mode for the graph of national cases:', 
-                 choices = c('Daily', 'Seven Day Average'),
-                 selected = 'Daily', 
-                 inline = TRUE, 
-                 width = '50%'),
     selectInput(inputId = 'countyOrState',
                 label = 'Select county or state:',
                 choices = c('County', 'State'),
@@ -123,15 +126,9 @@ ui <- fluidPage(
     actionButton(inputId = "visualizeIt", 
                  label = 'Visualize Data'),
     plotOutput('plotNationalCases', height = '300px', brush = 'plot_brush'),
-    verbatimTextOutput('infoNR'),
+    plotOutput('plotTopTenHotspots', height = '300px', brush = 'plot_brush'),
     plotOutput('plotDailyCases', height = '300px', brush = 'plot_brush_g_df_1'),
-    verbatimTextOutput('info_g_df_1'),
     plotOutput('plotDailyDeaths', height = '300px', brush = 'plot_brush_g_df_2'),
-    verbatimTextOutput('info_g_df_2'),
-    plotOutput('plotCases', height = '300px', brush = 'plot_brush_g_df_3'),
-    verbatimTextOutput('info_g_df_3'),
-    plotOutput('plotDeaths', height = '300px', brush = 'plot_brush_g_df_4'),
-    verbatimTextOutput('info_g_df_4'),
     tableOutput('headerPerCapitaResults'),
     tableOutput('tablePerCapitaResults'),
     textOutput('tableHeader'),
@@ -169,11 +166,72 @@ server <- function(input, output, session) {
                dailydeaths = round(deaths - lag(deaths), digits = 0)) %>%
         mutate(r7daDailyCases = rollmean(dailycases, 7, fill = NA), 
                r7daDailyDeaths = rollmean(dailydeaths, 7, fill = NA))
-        
-    observeEvent(input$calculationType, {
-        g_calcType <<- input$calculationType  
-    })
 
+    # In order to plot a line graph of the top ten current hotspots I have to scour through the data in order 
+    # to build a dataframe with each of the top ten states current seven-day running averages so that they 
+    # can be plotted on one graph
+    # 1. Determine what the day number is for reference in the data
+    today = as.numeric(strftime(Sys.Date(), format = "%j"))
+    # 2. Search through the total list to find out which states have the current top ten seven-day running average
+    #    and return the data into a dataframe of the top ten state names
+    dfTopTenHotspots <- dfCountyData %>%
+        group_by(state, date) %>%
+        mutate(day = as.numeric(strftime(date, format = "%j"))) %>%
+        summarise(cases=sum(cases), deaths=sum(deaths)) %>%
+        mutate(dailycases = round(cases - lag(cases), digits = 0), 
+               dailydeaths = round(deaths - lag(deaths), digits = 0)) %>%
+        mutate(r7daDailyCases = rollmean(dailycases, 7, fill = NA), 
+               r7daDailyDeaths = rollmean(dailydeaths, 7, fill = NA)) %>%
+        mutate(day = as.numeric(strftime(date, format = "%j"))) %>%
+        filter(day == (today - 4)) %>%
+        ungroup() %>%
+        select(state, r7daDailyCases) %>%
+        arrange(-r7daDailyCases) %>%
+        top_n(10) %>%
+        select(state)
+    
+    # 3. Now build a dataframe of all the day-based seven-day running averages from each 
+    #    of the top ten states.  This data will be not ready for graphing, so I've called
+    #    it Untidy for clean up immediately following
+    dfTopTenHotspotsDataUntidy <- dfCountyData %>%
+        group_by(state, date) %>%
+        mutate(day = as.numeric(strftime(date, format = "%j"))) %>%
+        summarise(cases=sum(cases)) %>%
+        mutate(dailycases = round(cases - lag(cases), digits = 0)) %>%
+        mutate(r7daDailyCases = rollmean(dailycases, 7, fill = NA)) %>%
+        mutate(day = as.numeric(strftime(date, format = "%j"))) %>%
+        filter(state == dfTopTenHotspots$state[1] |
+                   state == dfTopTenHotspots$state[2] |
+                   state == dfTopTenHotspots$state[3] |
+                   state == dfTopTenHotspots$state[4] |
+                   state == dfTopTenHotspots$state[5] |
+                   state == dfTopTenHotspots$state[6] |
+                   state == dfTopTenHotspots$state[7] |
+                   state == dfTopTenHotspots$state[8] |
+                   state == dfTopTenHotspots$state[9] |
+                   state == dfTopTenHotspots$state[10]) %>%
+        ungroup() %>%
+        select(state, day, r7daDailyCases)
+    
+    # 4. Now build the tidy dataframe of all the states running seven-day average values
+    #    with respect to the day variable so that they can be graphed
+    dfTopTenHotspotsData <- ""
+    for (i in 1:10) {
+        dfSingleState <- dfTopTenHotspotsDataUntidy %>%
+            filter(state == dfTopTenHotspots[[1]][i]) %>%
+            select(day, r7daDailyCases)
+        colnames(dfSingleState)[2] = str_c('State', i)
+        if (i == 1) {
+            dfTopTenHotspotsData <- dfSingleState
+        } else {
+            if (min(dfSingleState$day) < min(dfTopTenHotspotsData$day)) {
+                dfTopTenHotspotsData <- dfSingleState %>% left_join(dfTopTenHotspotsData, by = "day")
+            } else {
+                dfTopTenHotspotsData <- dfTopTenHotspotsData %>% left_join(dfSingleState, by = "day")
+            }
+        }
+    }
+ 
     observeEvent(input$desiredRegion, {
         g_desiredRegion <<- input$desiredRegion
     })  
@@ -188,35 +246,6 @@ server <- function(input, output, session) {
         g_countyOrState <<- input$countyOrState
     })    
     
-    output$infoNR <- renderPrint({
-        try({
-        brushedPoints(g_dfNR, input$plot_brush, xvar = "day", yvar = "cases")
-        })
-    })
-    
-    output$info_g_df_1 <- renderPrint({
-        try({
-            brushedPoints(g_df_1, input$plot_brush_g_df_1, xvar = "day", yvar = "cases")
-        })
-    }) 
-
-    output$info_g_df_2 <- renderPrint({
-        try({
-            brushedPoints(g_df_2, input$plot_brush_g_df_2, xvar = "day", yvar = "cases")
-        })
-    }) 
-
-    output$info_g_df_3 <- renderPrint({
-        try({
-            brushedPoints(g_df_3, input$plot_brush_g_df_3, xvar = "day", yvar = "cases")
-        })
-    }) 
-    
-    output$info_g_df_4 <- renderPrint({
-        try({
-            brushedPoints(g_df_4, input$plot_brush_g_df_4, xvar = "day", yvar = "cases")
-        })
-    }) 
     # This button will do it all now, especially to help with the performance of the site,
     # and all plots will be rendered based on the selection of daily or seven day averages
     # in the end, but now just move it into this button event
@@ -231,7 +260,7 @@ server <- function(input, output, session) {
             
             if (cT == 'Daily') {
                 df <- dfNationalResults %>%
-                    mutate(cases = dailycases)
+                    mutate(cases = dailycases, cases7d = r7daDailyCases)
                 g_dfNR <<- df
                 maxCases = round(max(df$cases, na.rm = TRUE), digits = 0)
                 maxDay = max(df$day, na.rm = TRUE)
@@ -243,10 +272,10 @@ server <- function(input, output, session) {
                            plotMaxCases = maxCases,
                            plotMaxDay = maxDay,
                            plotMinDay = minDay,
-                           plotTrend = TRUE)
+                           plotTrend = FALSE)
             } else {
                 df <- dfNationalResults %>%
-                    mutate(cases = r7daDailyCases)
+                    mutate(cases = dailycases, cases7d = r7daDailyCases)
                 g_dfNR <<- df
                 maxCases = round(max(df$cases, na.rm = TRUE), digits = 0)
                 maxDay = max(df$day, na.rm = TRUE)
@@ -258,8 +287,50 @@ server <- function(input, output, session) {
                            plotMaxCases = maxCases,
                            plotMaxDay = maxDay,
                            plotMinDay = minDay,
-                           plotTrend = TRUE)
+                           plotTrend = FALSE)
             }
+        })
+
+        # Plot top ten hotspots
+        output$plotTopTenHotspots <- renderPlot({
+            my.colors <- c("State1"="chocolate3", 
+                           "State2"="deeppink", 
+                           "State3"="black", 
+                           "State4"="navyblue",
+                           "State5"="blueviolet",
+                           "State6"="orange3",
+                           "State7"="red4",
+                           "State8"="lightblue",
+                           "State9"="forestgreen",
+                           "State10"="darkmagenta")
+            my.labels <- c(dfTopTenHotspots[[1]][1], 
+                           dfTopTenHotspots[[1]][2], 
+                           dfTopTenHotspots[[1]][3], 
+                           dfTopTenHotspots[[1]][4],
+                           dfTopTenHotspots[[1]][5],
+                           dfTopTenHotspots[[1]][6],
+                           dfTopTenHotspots[[1]][7],
+                           dfTopTenHotspots[[1]][8],
+                           dfTopTenHotspots[[1]][9],
+                           dfTopTenHotspots[[1]][10])
+            ggplot(data = dfTopTenHotspotsData, mapping = aes(x = day)) +
+                geom_line(aes(y = State1, colour = "State1")) +
+                geom_line(aes(y = State2, colour = "State2")) +
+                geom_line(aes(y = State3, colour = "State3")) +
+                geom_line(aes(y = State4, colour = "State4")) +
+                geom_line(aes(y = State5, colour = "State5")) +
+                geom_line(aes(y = State6, colour = "State6")) +
+                geom_line(aes(y = State7, colour = "State7")) +
+                geom_line(aes(y = State8, colour = "State8")) +
+                geom_line(aes(y = State9, colour = "State9")) +
+                geom_line(aes(y = State10, colour = "State10")) +
+                scale_colour_manual("", values = my.colors, labels = my.labels) +
+                coord_cartesian() +
+                theme_dark() +
+                labs(y = 'Cases++',
+                     x = 'Day',
+                     title = 'Top Ten Hotspot States',
+                     subtitle = 'Seven-Day Running Averages of Cases')
         })
         
         try({
@@ -288,7 +359,7 @@ server <- function(input, output, session) {
         # Daily Cases in Region Selected
         if (cT == 'Daily') {
             g_df_1 <<- dfResults %>%
-                mutate(cases = dailycases)
+                mutate(cases = dailycases, cases7d = r7daDailyCases)
             maxCases_1 = round(max(g_df_1$cases, na.rm = TRUE), digits = 0)
             maxDay_1 = max(g_df_1$day, na.rm = TRUE)
             minDay_1 = min(g_df_1$day, na.rm = TRUE)
@@ -300,11 +371,11 @@ server <- function(input, output, session) {
                            plotMaxCases = maxCases_1,
                            plotMaxDay = maxDay_1,
                            plotMinDay = minDay_1,
-                           plotTrend = TRUE)
+                           plotTrend = FALSE)
             })
         } else {
             g_df_1 <<- dfResults %>%
-                mutate(cases = r7daDailyCases)
+                mutate(cases = dailycases, cases7d = r7daDailyCases)
             maxCases_1 = round(max(g_df_1$cases, na.rm = TRUE), digits = 0)
             maxDay_1 = max(g_df_1$day, na.rm = TRUE)
             minDay_1 = min(g_df_1$day, na.rm = TRUE)
@@ -316,14 +387,14 @@ server <- function(input, output, session) {
                            plotMaxCases = maxCases_1,
                            plotMaxDay = maxDay_1,
                            plotMinDay = minDay_1,
-                           plotTrend = TRUE)
+                           plotTrend = FALSE)
             })
         }
 
         # Daily Deaths in Region Selected
         if (cT == 'Daily') {
             g_df_2 <<- dfResults %>%
-                mutate(cases = dailydeaths)
+                mutate(cases = dailydeaths, cases7d = r7daDailyDeaths)
             maxCases_2 = round(max(g_df_2$cases, na.rm = TRUE), digits = 0)
             maxDay_2 = max(g_df_2$day, na.rm = TRUE)
             minDay_2 = min(g_df_2$day, na.rm = TRUE)
@@ -335,11 +406,11 @@ server <- function(input, output, session) {
                            plotMaxCases = maxCases_2,
                            plotMaxDay = maxDay_2,
                            plotMinDay = minDay_2,
-                           plotTrend = TRUE)            
+                           plotTrend = FALSE)            
             })
         } else {
             g_df_2 <<- dfResults %>%
-                mutate(cases = r7daDailyDeaths)
+                mutate(cases = dailydeaths, cases7d = r7daDailyDeaths)
             maxCases_2 = round(max(g_df_2$cases, na.rm = TRUE), digits = 0)
             maxDay_2 = max(g_df_2$day, na.rm = TRUE)
             minDay_2 = min(g_df_2$day, na.rm = TRUE)
@@ -351,40 +422,9 @@ server <- function(input, output, session) {
                            plotMaxCases = maxCases_2,
                            plotMaxDay = maxDay_2,
                            plotMinDay = minDay_2,
-                           plotTrend = TRUE)            
+                           plotTrend = FALSE)            
             })
         }        
-        
-        # Accumulating Cases in Region Selected
-        g_df_3 <<- dfResults
-        maxCases_3 = round(max(g_df_3$cases, na.rm = TRUE), digits = 0)
-        maxDay_3 = max(g_df_3$day, na.rm = TRUE)
-        minDay_3 = min(g_df_3$day, na.rm = TRUE)        
-        output$plotCases <- renderPlot({
-            createPlot(g_df_3,  
-                       plotColor = 'lightblue', 
-                       plotTitle = str_c('Accumulated Cases in ', dR), 
-                       plotSubtitle = txtDataSource,
-                       plotMaxCases = maxCases_3,
-                       plotMaxDay = maxDay_3,
-                       plotMinDay = minDay_3)            
-        })
-        
-        # Accumulating Deaths in Region Selected
-        g_df_4 <<- dfResults %>%
-            mutate(cases = deaths)
-        maxCases_4 = round(max(g_df_4$cases, na.rm = TRUE), digits = 0)
-        maxDay_4 = max(g_df_4$day, na.rm = TRUE)
-        minDay_4 = min(g_df_4$day, na.rm = TRUE)          
-        output$plotDeaths <- renderPlot({
-            createPlot(g_df_4,  
-                       plotColor = 'lightblue', 
-                       plotTitle = str_c('Accumulated Deaths in ', dR), 
-                       plotSubtitle = txtDataSource,
-                       plotMaxCases = maxCases_4,
-                       plotMaxDay = maxDay_4,
-                       plotMinDay = minDay_4)  
-        })
         
         output$tableHeader <- renderText(str_c('Table for ', dR))   
         

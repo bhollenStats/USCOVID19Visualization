@@ -9,19 +9,22 @@ table {
   font-size: 12px;
 }
 #plotCases {
-  margin-bottom: 0;
+  margin-bottom: 15px;
 }
 #plotDeaths {
-  margin-bottom: 0;
+  margin-bottom: 15px;
 }
 #plotDailyCases {
-  margin-bottom: 0;
+  margin-bottom: 15px;
 }
 #plotDailyDeaths {
-  margin-bottom: 0;
+  margin-bottom: 15px;
+}
+#plotTopTenHotspots {
+  margin-bottom: 15px;
 }
 #plotNationalCases {
-  margin-bottom: 0;
+  margin-bottom: 15px;
 }
 #visualizeIt {
   margin-bottom: 15px;
