@@ -20,6 +20,9 @@ table {
 #plotDailyDeaths {
   margin-bottom: 15px;
 }
+#plotTopTenHotspots {
+  margin-bottom: 15px;
+}
 #plotNationalCases {
   margin-bottom: 15px;
 }
