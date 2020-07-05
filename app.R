@@ -123,6 +123,18 @@ ui <- fluidPage(
                 selected = 'Michigan',
                 multiple = FALSE,
                 width = '50%'),
+    dateRangeInput(inputId = "dateRange",
+              label = "Date Range:",
+              start = "2020-01-01",
+              end = "2020-01-01",
+              min = "2020-01-01",
+              max = "2020-07-05",
+              format = "yyyy-mm-dd",
+              startview = "month",
+              weekstart = 0,
+              language = "en",
+              separator = "to",
+              autoclose = 1),
     actionButton(inputId = "visualizeIt", 
                  label = 'Visualize Data'),
     plotOutput('plotNationalCases', height = '300px', brush = 'plot_brush'),
@@ -172,6 +184,16 @@ server <- function(input, output, session) {
     # can be plotted on one graph
     # 1. Determine what the day number is for reference in the data
     today = as.numeric(strftime(Sys.Date(), format = "%j"))
+    
+    #populate the date range selection
+    startDate <- min(dfNationalResults$date)
+    endDate <- max(dfNationalResults$date)
+    updateDateRangeInput(session = session,
+                         inputId = "dateRange", 
+                         start = as.character(startDate),
+                         end = as.character(endDate),
+                         min = as.character(startDate),
+                         max = as.character(endDate))
     # 2. Search through the total list to find out which states have the current top ten seven-day running average
     #    and return the data into a dataframe of the top ten state names
     dfTopTenHotspots <- dfCountyData %>%
@@ -232,6 +254,88 @@ server <- function(input, output, session) {
         }
     }
  
+    cT <<- g_calcType
+    dR <<- g_desiredRegion
+    cOS <<- g_countyOrState
+
+    # National data
+    output$plotNationalCases <- renderPlot({
+        
+        if (cT == 'Daily') {
+            df <- dfNationalResults %>%
+                mutate(cases = dailycases, cases7d = r7daDailyCases)
+            g_dfNR <<- df
+            maxCases = round(max(df$cases, na.rm = TRUE), digits = 0)
+            maxDay = max(df$day, na.rm = TRUE)
+            minDay = min(df$day, na.rm = TRUE)
+            createPlot(df,  
+                       plotColor = 'lightblue', 
+                       plotTitle = 'Daily National Cases', 
+                       plotSubtitle = txtDataSource,
+                       plotMaxCases = maxCases,
+                       plotMaxDay = maxDay,
+                       plotMinDay = minDay,
+                       plotTrend = FALSE)
+        } else {
+            df <- dfNationalResults %>%
+                mutate(cases = dailycases, cases7d = r7daDailyCases)
+            g_dfNR <<- df
+            maxCases = round(max(df$cases, na.rm = TRUE), digits = 0)
+            maxDay = max(df$day, na.rm = TRUE)
+            minDay = min(df$day, na.rm = TRUE)
+            createPlot(df,  
+                       plotColor = 'lightgreen', 
+                       plotTitle = 'Seven Day Average Cases', 
+                       plotSubtitle = txtDataSource,
+                       plotMaxCases = maxCases,
+                       plotMaxDay = maxDay,
+                       plotMinDay = minDay,
+                       plotTrend = FALSE)
+        }
+    })
+    
+    # Plot top ten hotspots
+    output$plotTopTenHotspots <- renderPlot({
+        my.colors <- c("State1"="chocolate3", 
+                       "State2"="deeppink", 
+                       "State3"="black", 
+                       "State4"="navyblue",
+                       "State5"="blueviolet",
+                       "State6"="orange3",
+                       "State7"="red4",
+                       "State8"="lightblue",
+                       "State9"="forestgreen",
+                       "State10"="darkmagenta")
+        my.labels <- c(dfTopTenHotspots[[1]][1], 
+                       dfTopTenHotspots[[1]][2], 
+                       dfTopTenHotspots[[1]][3], 
+                       dfTopTenHotspots[[1]][4],
+                       dfTopTenHotspots[[1]][5],
+                       dfTopTenHotspots[[1]][6],
+                       dfTopTenHotspots[[1]][7],
+                       dfTopTenHotspots[[1]][8],
+                       dfTopTenHotspots[[1]][9],
+                       dfTopTenHotspots[[1]][10])
+        ggplot(data = dfTopTenHotspotsData, mapping = aes(x = day)) +
+            geom_line(aes(y = State1, colour = "State1")) +
+            geom_line(aes(y = State2, colour = "State2")) +
+            geom_line(aes(y = State3, colour = "State3")) +
+            geom_line(aes(y = State4, colour = "State4")) +
+            geom_line(aes(y = State5, colour = "State5")) +
+            geom_line(aes(y = State6, colour = "State6")) +
+            geom_line(aes(y = State7, colour = "State7")) +
+            geom_line(aes(y = State8, colour = "State8")) +
+            geom_line(aes(y = State9, colour = "State9")) +
+            geom_line(aes(y = State10, colour = "State10")) +
+            scale_colour_manual("", values = my.colors, labels = my.labels) +
+            coord_cartesian() +
+            theme_dark() +
+            labs(y = 'Cases++',
+                 x = 'Day',
+                 title = 'Top Ten Hotspot States by Seven-Day Moving Average',
+                 subtitle = txtDataSource)
+    })
+    
     observeEvent(input$desiredRegion, {
         g_desiredRegion <<- input$desiredRegion
     })  
@@ -255,83 +359,6 @@ server <- function(input, output, session) {
         dR <<- g_desiredRegion
         cOS <<- g_countyOrState
         
-        # National data
-        output$plotNationalCases <- renderPlot({
-            
-            if (cT == 'Daily') {
-                df <- dfNationalResults %>%
-                    mutate(cases = dailycases, cases7d = r7daDailyCases)
-                g_dfNR <<- df
-                maxCases = round(max(df$cases, na.rm = TRUE), digits = 0)
-                maxDay = max(df$day, na.rm = TRUE)
-                minDay = min(df$day, na.rm = TRUE)
-                createPlot(df,  
-                           plotColor = 'lightblue', 
-                           plotTitle = 'Daily National Cases', 
-                           plotSubtitle = txtDataSource,
-                           plotMaxCases = maxCases,
-                           plotMaxDay = maxDay,
-                           plotMinDay = minDay,
-                           plotTrend = FALSE)
-            } else {
-                df <- dfNationalResults %>%
-                    mutate(cases = dailycases, cases7d = r7daDailyCases)
-                g_dfNR <<- df
-                maxCases = round(max(df$cases, na.rm = TRUE), digits = 0)
-                maxDay = max(df$day, na.rm = TRUE)
-                minDay = min(df$day, na.rm = TRUE)
-                createPlot(df,  
-                           plotColor = 'lightgreen', 
-                           plotTitle = 'Seven Day Average Cases', 
-                           plotSubtitle = txtDataSource,
-                           plotMaxCases = maxCases,
-                           plotMaxDay = maxDay,
-                           plotMinDay = minDay,
-                           plotTrend = FALSE)
-            }
-        })
-
-        # Plot top ten hotspots
-        output$plotTopTenHotspots <- renderPlot({
-            my.colors <- c("State1"="chocolate3", 
-                           "State2"="deeppink", 
-                           "State3"="black", 
-                           "State4"="navyblue",
-                           "State5"="blueviolet",
-                           "State6"="orange3",
-                           "State7"="red4",
-                           "State8"="lightblue",
-                           "State9"="forestgreen",
-                           "State10"="darkmagenta")
-            my.labels <- c(dfTopTenHotspots[[1]][1], 
-                           dfTopTenHotspots[[1]][2], 
-                           dfTopTenHotspots[[1]][3], 
-                           dfTopTenHotspots[[1]][4],
-                           dfTopTenHotspots[[1]][5],
-                           dfTopTenHotspots[[1]][6],
-                           dfTopTenHotspots[[1]][7],
-                           dfTopTenHotspots[[1]][8],
-                           dfTopTenHotspots[[1]][9],
-                           dfTopTenHotspots[[1]][10])
-            ggplot(data = dfTopTenHotspotsData, mapping = aes(x = day)) +
-                geom_line(aes(y = State1, colour = "State1")) +
-                geom_line(aes(y = State2, colour = "State2")) +
-                geom_line(aes(y = State3, colour = "State3")) +
-                geom_line(aes(y = State4, colour = "State4")) +
-                geom_line(aes(y = State5, colour = "State5")) +
-                geom_line(aes(y = State6, colour = "State6")) +
-                geom_line(aes(y = State7, colour = "State7")) +
-                geom_line(aes(y = State8, colour = "State8")) +
-                geom_line(aes(y = State9, colour = "State9")) +
-                geom_line(aes(y = State10, colour = "State10")) +
-                scale_colour_manual("", values = my.colors, labels = my.labels) +
-                coord_cartesian() +
-                theme_dark() +
-                labs(y = 'Cases++',
-                     x = 'Day',
-                     title = 'Top Ten Hotspot States',
-                     subtitle = 'Seven-Day Running Averages of Cases')
-        })
         
         try({
             if(cOS=='County') {
