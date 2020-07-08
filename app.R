@@ -19,6 +19,10 @@ g_df_1 <- 'TBD'
 g_df_2 <- 'TBD'
 g_df_3 <- 'TBD'
 g_df_4 <- 'TBD'
+g_minDay <- 'TBD'
+g_minDate <- 'TBD'
+g_maxDay <- 'TBD'
+g_maxDate <- 'TBD'
 
 # dfNationalResults %>% 
 #   ggplot() + 
@@ -123,10 +127,22 @@ ui <- fluidPage(
                 selected = 'Michigan',
                 multiple = FALSE,
                 width = '50%'),
+    dateRangeInput(inputId = "dateRange",
+              label = "Date Range:",
+              start = "2020-01-01",
+              end = "2020-01-01",
+              min = "2020-01-01",
+              max = "2020-07-05",
+              format = "yyyy-mm-dd",
+              startview = "month",
+              weekstart = 0,
+              language = "en",
+              separator = "to",
+              autoclose = 1),
     actionButton(inputId = "visualizeIt", 
                  label = 'Visualize Data'),
-    plotOutput('plotNationalCases', height = '300px', brush = 'plot_brush'),
     plotOutput('plotTopTenHotspots', height = '300px', brush = 'plot_brush'),
+    plotOutput('plotNationalCases', height = '300px', brush = 'plot_brush'),
     plotOutput('plotDailyCases', height = '300px', brush = 'plot_brush_g_df_1'),
     plotOutput('plotDailyDeaths', height = '300px', brush = 'plot_brush_g_df_2'),
     tableOutput('headerPerCapitaResults'),
@@ -136,6 +152,8 @@ ui <- fluidPage(
 )
 
 server <- function(input, output, session) {
+    
+    isolate({input$dateRange})
     
     # Read the data and build the full set of data for visualization
     # 1. Read the NYTimes GitHub repository of all the COVID-19 cases per state and county
@@ -172,6 +190,17 @@ server <- function(input, output, session) {
     # can be plotted on one graph
     # 1. Determine what the day number is for reference in the data
     today = as.numeric(strftime(Sys.Date(), format = "%j"))
+    
+    #populate the date range selection
+    startDate <- min(dfNationalResults$date)
+    endDate <- max(dfNationalResults$date)
+    updateDateRangeInput(session = session,
+                         inputId = "dateRange", 
+                         start = as.character(startDate),
+                         end = as.character(endDate),
+                         min = as.character(startDate),
+                         max = as.character(endDate))
+    
     # 2. Search through the total list to find out which states have the current top ten seven-day running average
     #    and return the data into a dataframe of the top ten state names
     dfTopTenHotspots <- dfCountyData %>%
@@ -231,7 +260,14 @@ server <- function(input, output, session) {
             }
         }
     }
- 
+
+    observeEvent(input$dateRange, {
+        g_minDate <<- input$dateRange[[1]]
+        g_minDay <<- as.numeric(strftime(input$dateRange[[1]], format = "%j"))  
+        g_maxDate <<- input$dateRange[[2]]
+        g_maxDay <<- as.numeric(strftime(input$dateRange[[2]], format = "%j"))
+    })
+
     observeEvent(input$desiredRegion, {
         g_desiredRegion <<- input$desiredRegion
     })  
@@ -257,80 +293,79 @@ server <- function(input, output, session) {
         
         # National data
         output$plotNationalCases <- renderPlot({
+
+            # Plot top ten hotspots
+            output$plotTopTenHotspots <- renderPlot({
+                my.colors <- c("State1"="chocolate3", 
+                               "State2"="deeppink", 
+                               "State3"="black", 
+                               "State4"="navyblue",
+                               "State5"="blueviolet",
+                               "State6"="orange3",
+                               "State7"="red4",
+                               "State8"="lightblue",
+                               "State9"="forestgreen",
+                               "State10"="darkmagenta")
+                my.labels <- c(dfTopTenHotspots[[1]][1], 
+                               dfTopTenHotspots[[1]][2], 
+                               dfTopTenHotspots[[1]][3], 
+                               dfTopTenHotspots[[1]][4],
+                               dfTopTenHotspots[[1]][5],
+                               dfTopTenHotspots[[1]][6],
+                               dfTopTenHotspots[[1]][7],
+                               dfTopTenHotspots[[1]][8],
+                               dfTopTenHotspots[[1]][9],
+                               dfTopTenHotspots[[1]][10])
+                ggplot(data = dfTopTenHotspotsData, aes(x = day)) +
+                    geom_line(aes(y = State1, colour = "State1")) +
+                    geom_line(aes(y = State2, colour = "State2")) +
+                    geom_line(aes(y = State3, colour = "State3")) +
+                    geom_line(aes(y = State4, colour = "State4")) +
+                    geom_line(aes(y = State5, colour = "State5")) +
+                    geom_line(aes(y = State6, colour = "State6")) +
+                    geom_line(aes(y = State7, colour = "State7")) +
+                    geom_line(aes(y = State8, colour = "State8")) +
+                    geom_line(aes(y = State9, colour = "State9")) +
+                    geom_line(aes(y = State10, colour = "State10")) +
+                    scale_colour_manual("", values = my.colors, labels = my.labels) +
+                    coord_cartesian() +
+                    theme_dark() +
+                    labs(y = 'Cases++',
+                         x = 'Day',
+                         title = 'Top Ten Hotspot States by Seven-Day Moving Average',
+                         subtitle = txtDataSource)
+            })
+            
             
             if (cT == 'Daily') {
                 df <- dfNationalResults %>%
-                    mutate(cases = dailycases, cases7d = r7daDailyCases)
+                    mutate(cases = dailycases, cases7d = r7daDailyCases) %>%
+                    filter((day >= g_minDay) & (day <= g_maxDay))
                 g_dfNR <<- df
                 maxCases = round(max(df$cases, na.rm = TRUE), digits = 0)
-                maxDay = max(df$day, na.rm = TRUE)
-                minDay = min(df$day, na.rm = TRUE)
                 createPlot(df,  
                            plotColor = 'lightblue', 
-                           plotTitle = 'Daily National Cases', 
+                           plotTitle = str_c('Daily National Cases from ', g_minDate, ' to ', g_maxDate), 
                            plotSubtitle = txtDataSource,
                            plotMaxCases = maxCases,
-                           plotMaxDay = maxDay,
-                           plotMinDay = minDay,
+                           plotMaxDay = g_maxDay,
+                           plotMinDay = g_minDay,
                            plotTrend = FALSE)
             } else {
                 df <- dfNationalResults %>%
-                    mutate(cases = dailycases, cases7d = r7daDailyCases)
+                    mutate(cases = dailycases, cases7d = r7daDailyCases) %>%
+                    filter(day >= g_minDay & day <= g_maxDay)
                 g_dfNR <<- df
                 maxCases = round(max(df$cases, na.rm = TRUE), digits = 0)
-                maxDay = max(df$day, na.rm = TRUE)
-                minDay = min(df$day, na.rm = TRUE)
                 createPlot(df,  
                            plotColor = 'lightgreen', 
-                           plotTitle = 'Seven Day Average Cases', 
+                           plotTitle = str_c('Seven Day Average Cases from ', g_minDate, ' to ', g_maxDate), 
                            plotSubtitle = txtDataSource,
                            plotMaxCases = maxCases,
-                           plotMaxDay = maxDay,
-                           plotMinDay = minDay,
+                           plotMaxDay = g_maxDay,
+                           plotMinDay = g_minDay,
                            plotTrend = FALSE)
             }
-        })
-
-        # Plot top ten hotspots
-        output$plotTopTenHotspots <- renderPlot({
-            my.colors <- c("State1"="chocolate3", 
-                           "State2"="deeppink", 
-                           "State3"="black", 
-                           "State4"="navyblue",
-                           "State5"="blueviolet",
-                           "State6"="orange3",
-                           "State7"="red4",
-                           "State8"="lightblue",
-                           "State9"="forestgreen",
-                           "State10"="darkmagenta")
-            my.labels <- c(dfTopTenHotspots[[1]][1], 
-                           dfTopTenHotspots[[1]][2], 
-                           dfTopTenHotspots[[1]][3], 
-                           dfTopTenHotspots[[1]][4],
-                           dfTopTenHotspots[[1]][5],
-                           dfTopTenHotspots[[1]][6],
-                           dfTopTenHotspots[[1]][7],
-                           dfTopTenHotspots[[1]][8],
-                           dfTopTenHotspots[[1]][9],
-                           dfTopTenHotspots[[1]][10])
-            ggplot(data = dfTopTenHotspotsData, mapping = aes(x = day)) +
-                geom_line(aes(y = State1, colour = "State1")) +
-                geom_line(aes(y = State2, colour = "State2")) +
-                geom_line(aes(y = State3, colour = "State3")) +
-                geom_line(aes(y = State4, colour = "State4")) +
-                geom_line(aes(y = State5, colour = "State5")) +
-                geom_line(aes(y = State6, colour = "State6")) +
-                geom_line(aes(y = State7, colour = "State7")) +
-                geom_line(aes(y = State8, colour = "State8")) +
-                geom_line(aes(y = State9, colour = "State9")) +
-                geom_line(aes(y = State10, colour = "State10")) +
-                scale_colour_manual("", values = my.colors, labels = my.labels) +
-                coord_cartesian() +
-                theme_dark() +
-                labs(y = 'Cases++',
-                     x = 'Day',
-                     title = 'Top Ten Hotspot States',
-                     subtitle = 'Seven-Day Running Averages of Cases')
         })
         
         try({
@@ -342,7 +377,8 @@ server <- function(input, output, session) {
                     mutate(dailycases = round(cases - lag(cases), digits = 0), dailydeaths = round(deaths - lag(deaths), digits = 0)) %>%
                     select(date, cases, deaths, day, dailycases, dailydeaths, fips) %>%
                     mutate(r7daDailyCases = rollmean(dailycases, 7, fill = NA), 
-                           r7daDailyDeaths = rollmean(dailydeaths, 7, fill = NA))
+                           r7daDailyDeaths = rollmean(dailydeaths, 7, fill = NA)) %>%
+                    filter(day >= g_minDay & day <= g_maxDay)
             }
             else {
                 dfResults <- dfCountyData %>% 
@@ -353,20 +389,22 @@ server <- function(input, output, session) {
                     mutate(dailycases = round(cases - lag(cases), digits = 0), dailydeaths = round(deaths - lag(deaths), digits = 0)) %>%
                     select(date, cases, deaths, day, dailycases, dailydeaths) %>%
                     mutate(r7daDailyCases = rollmean(dailycases, 7, fill = NA), 
-                           r7daDailyDeaths = rollmean(dailydeaths, 7, fill = NA))
+                           r7daDailyDeaths = rollmean(dailydeaths, 7, fill = NA)) %>%
+                    filter(day >= g_minDay & day <= g_maxDay)
             }}, silent = TRUE)
         
         # Daily Cases in Region Selected
         if (cT == 'Daily') {
             g_df_1 <<- dfResults %>%
-                mutate(cases = dailycases, cases7d = r7daDailyCases)
+                mutate(cases = dailycases, cases7d = r7daDailyCases) %>%
+                filter(day >= g_minDay & day <= g_maxDay)
             maxCases_1 = round(max(g_df_1$cases, na.rm = TRUE), digits = 0)
             maxDay_1 = max(g_df_1$day, na.rm = TRUE)
             minDay_1 = min(g_df_1$day, na.rm = TRUE)
             output$plotDailyCases <- renderPlot({
                 createPlot(g_df_1,  
                            plotColor = 'lightblue', 
-                           plotTitle = str_c('Daily Cases in ', dR), 
+                           plotTitle = str_c('Daily Cases in ', dR, ' from ', g_minDate, ' to ', g_maxDate),
                            plotSubtitle = txtDataSource,
                            plotMaxCases = maxCases_1,
                            plotMaxDay = maxDay_1,
@@ -375,14 +413,15 @@ server <- function(input, output, session) {
             })
         } else {
             g_df_1 <<- dfResults %>%
-                mutate(cases = dailycases, cases7d = r7daDailyCases)
+                mutate(cases = dailycases, cases7d = r7daDailyCases) %>%
+                filter(day >= g_minDay & day <= g_maxDay)
             maxCases_1 = round(max(g_df_1$cases, na.rm = TRUE), digits = 0)
             maxDay_1 = max(g_df_1$day, na.rm = TRUE)
             minDay_1 = min(g_df_1$day, na.rm = TRUE)
             output$plotDailyCases <- renderPlot({
                 createPlot(g_df_1,
                            plotColor = 'lightgreen',
-                           plotTitle = str_c('Seven Day Average Cases in ', dR),
+                           plotTitle = str_c('Seven Day Average Cases in ', dR, ' from ', g_minDate, ' to ', g_maxDate),
                            plotSubtitle = txtDataSource,
                            plotMaxCases = maxCases_1,
                            plotMaxDay = maxDay_1,
@@ -394,14 +433,15 @@ server <- function(input, output, session) {
         # Daily Deaths in Region Selected
         if (cT == 'Daily') {
             g_df_2 <<- dfResults %>%
-                mutate(cases = dailydeaths, cases7d = r7daDailyDeaths)
+                mutate(cases = dailydeaths, cases7d = r7daDailyDeaths) %>%
+                filter(day >= g_minDay & day <= g_maxDay)
             maxCases_2 = round(max(g_df_2$cases, na.rm = TRUE), digits = 0)
             maxDay_2 = max(g_df_2$day, na.rm = TRUE)
             minDay_2 = min(g_df_2$day, na.rm = TRUE)
             output$plotDailyDeaths <- renderPlot({
                 createPlot(g_df_2,  
                            plotColor = 'lightblue', 
-                           plotTitle = str_c('Daily Deaths in ', dR), 
+                           plotTitle = str_c('Daily Deaths in ', dR, ' from ', g_minDate, ' to ', g_maxDate), 
                            plotSubtitle = txtDataSource,
                            plotMaxCases = maxCases_2,
                            plotMaxDay = maxDay_2,
@@ -410,14 +450,15 @@ server <- function(input, output, session) {
             })
         } else {
             g_df_2 <<- dfResults %>%
-                mutate(cases = dailydeaths, cases7d = r7daDailyDeaths)
+                mutate(cases = dailydeaths, cases7d = r7daDailyDeaths) %>%
+                filter(day >= g_minDay & day <= g_maxDay)
             maxCases_2 = round(max(g_df_2$cases, na.rm = TRUE), digits = 0)
             maxDay_2 = max(g_df_2$day, na.rm = TRUE)
             minDay_2 = min(g_df_2$day, na.rm = TRUE)
             output$plotDailyDeaths <- renderPlot({
                 createPlot(g_df_2,  
                            plotColor = 'lightgreen', 
-                           plotTitle = str_c('Seven Day Average Deaths in ', dR), 
+                           plotTitle = str_c('Seven Day Average Deaths in ', dR, ' from ', g_minDate, ' to ', g_maxDate),
                            plotSubtitle = txtDataSource,
                            plotMaxCases = maxCases_2,
                            plotMaxDay = maxDay_2,
@@ -426,12 +467,14 @@ server <- function(input, output, session) {
             })
         }        
         
-        output$tableHeader <- renderText(str_c('Table for ', dR))   
+        output$tableHeader <- renderText(str_c('Table for ', dR, ' from ', g_minDate, ' to ', g_maxDate))
         
         output$tableResults <- renderTable(dfResults %>%
                                                mutate(Date=as.character(date), Cases=round(cases, digits = 0), Deaths=round(deaths, digits = 0)) %>% 
                                                mutate(NewCases = round(dailycases, digits = 0), NewDeaths = round(dailydeaths, digits = 0)) %>%
-                                               select(Date, Cases, NewCases, Deaths, NewDeaths) %>%
+                                               select(Date, Cases, NewCases, Deaths, NewDeaths, day) %>%
+                                               filter(day >= g_minDay & day <= g_maxDay) %>%
+                                               select(-day) %>%
                                                arrange(desc(Date)),
                                            align="rrrrr",
                                            digits = 0,
@@ -447,7 +490,9 @@ server <- function(input, output, session) {
             output$tablePerCapitaResults <- renderTable(dfResults %>%
                                                             mutate(Date=as.character(date), Cases=round(cases/desPop, digits = 5), Deaths=round(deaths/desPop, digits = 5)) %>% 
                                                             mutate(NewCases = round(dailycases/desPop, digits = 5), NewDeaths = round(dailydeaths/desPop, digits = 5)) %>%
-                                                            select(Date, Cases, NewCases, Deaths, NewDeaths) %>%
+                                                            select(Date, Cases, NewCases, Deaths, NewDeaths, day) %>%
+                                                            filter(day >= g_minDay & day <= g_maxDay) %>%
+                                                            select(-day) %>%
                                                             arrange(desc(Date)),
                                                         align="rrrrr",
                                                         digits = 0,
@@ -466,7 +511,9 @@ server <- function(input, output, session) {
             output$tablePerCapitaResults <- renderTable(dfResults %>%
                                                             mutate(Date=as.character(date), Cases=round(cases/desPop, digits = 5), Deaths=round(deaths/desPop, digits = 5)) %>% 
                                                             mutate(NewCases = round(dailycases/desPop, digits = 5), NewDeaths = round(dailydeaths/desPop, digits = 5)) %>%
-                                                            select(Date, Cases, NewCases, Deaths, NewDeaths) %>%
+                                                            select(Date, Cases, NewCases, Deaths, NewDeaths, day) %>%
+                                                            filter(day >= g_minDay & day <= g_maxDay) %>%
+                                                            select(-day) %>%
                                                             arrange(desc(Date)),
                                                         align="rrrrr",
                                                         digits = 0,
