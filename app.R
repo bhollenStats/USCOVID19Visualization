@@ -175,11 +175,14 @@ server <- function(input, output, session) {
     txtDataDate <- Sys.Date()
     txtDataSource <- str_c("Data provided by the N.Y. Times [https://github.com/nytimes/covid-19-data] as of ", txtDataDate)
     
+    startDate <- min(dfCountyData$date)
+    endDate <- max(dfCountyData$date)
+    
     # Massage the data down to the following attributes {dailycases, dailydeaths, r7daDailyCases, r7daDailyDeaths}
     dfNationalResults <- dfCountyData %>% 
         group_by(date) %>% 
         summarise(cases=sum(cases), deaths=sum(deaths)) %>%
-        mutate(day = as.numeric(strftime(date, format = "%j"))) %>%
+        mutate(day = as.numeric(difftime(date, startDate , unit="days"))) %>%
         mutate(dailycases = round(cases - lag(cases), digits = 0), 
                dailydeaths = round(deaths - lag(deaths), digits = 0)) %>%
         mutate(r7daDailyCases = rollmean(dailycases, 7, fill = NA), 
@@ -189,11 +192,9 @@ server <- function(input, output, session) {
     # to build a dataframe with each of the top ten states current seven-day running averages so that they 
     # can be plotted on one graph
     # 1. Determine what the day number is for reference in the data
-    today = as.numeric(strftime(Sys.Date(), format = "%j"))
+    today <- as.numeric(difftime(Sys.Date()-1, startDate , unit="days"))
     
     #populate the date range selection
-    startDate <- min(dfNationalResults$date)
-    endDate <- max(dfNationalResults$date)
     updateDateRangeInput(session = session,
                          inputId = "dateRange", 
                          start = as.character(startDate),
@@ -205,13 +206,13 @@ server <- function(input, output, session) {
     #    and return the data into a dataframe of the top ten state names
     dfTopTenHotspots <- dfCountyData %>%
         group_by(state, date) %>%
-        mutate(day = as.numeric(strftime(date, format = "%j"))) %>%
+        mutate(day = as.numeric(difftime(date, startDate , unit="days"))) %>%
         summarise(cases=sum(cases), deaths=sum(deaths)) %>%
         mutate(dailycases = round(cases - lag(cases), digits = 0), 
                dailydeaths = round(deaths - lag(deaths), digits = 0)) %>%
         mutate(r7daDailyCases = rollmean(dailycases, 7, fill = NA), 
                r7daDailyDeaths = rollmean(dailydeaths, 7, fill = NA)) %>%
-        mutate(day = as.numeric(strftime(date, format = "%j"))) %>%
+        mutate(day = as.numeric(difftime(date, startDate , unit="days"))) %>%
         filter(day == (today - 4)) %>%
         ungroup() %>%
         select(state, r7daDailyCases) %>%
@@ -224,11 +225,11 @@ server <- function(input, output, session) {
     #    it Untidy for clean up immediately following
     dfTopTenHotspotsDataUntidy <- dfCountyData %>%
         group_by(state, date) %>%
-        mutate(day = as.numeric(strftime(date, format = "%j"))) %>%
+        mutate(day = as.numeric(difftime(date, startDate , unit="days"))) %>%
         summarise(cases=sum(cases)) %>%
         mutate(dailycases = round(cases - lag(cases), digits = 0)) %>%
         mutate(r7daDailyCases = rollmean(dailycases, 7, fill = NA)) %>%
-        mutate(day = as.numeric(strftime(date, format = "%j"))) %>%
+        mutate(day = as.numeric(difftime(date, startDate , unit="days"))) %>%
         filter(state == dfTopTenHotspots$state[1] |
                    state == dfTopTenHotspots$state[2] |
                    state == dfTopTenHotspots$state[3] |
@@ -263,9 +264,10 @@ server <- function(input, output, session) {
 
     observeEvent(input$dateRange, {
         g_minDate <<- input$dateRange[[1]]
-        g_minDay <<- as.numeric(strftime(input$dateRange[[1]], format = "%j"))  
+        g_minDay <<- as.numeric(difftime(input$dateRange[[1]], startDate , unit="days"))
         g_maxDate <<- input$dateRange[[2]]
-        g_maxDay <<- as.numeric(strftime(input$dateRange[[2]], format = "%j"))
+        g_maxDay <<- as.numeric(difftime(input$dateRange[[2]], startDate , unit="days"))
+        
     })
 
     observeEvent(input$desiredRegion, {
@@ -373,7 +375,7 @@ server <- function(input, output, session) {
                 dfResults <- dfCountyData %>%
                     mutate(countyState=str_c(county, " County, ", state)) %>%
                     filter(countyState == dR) %>%
-                    mutate(day = as.numeric(strftime(date, format = "%j"))) %>%
+                    mutate(day = as.numeric(difftime(date, startDate , unit="days"))) %>%
                     mutate(dailycases = round(cases - lag(cases), digits = 0), dailydeaths = round(deaths - lag(deaths), digits = 0)) %>%
                     select(date, cases, deaths, day, dailycases, dailydeaths, fips) %>%
                     mutate(r7daDailyCases = rollmean(dailycases, 7, fill = NA), 
@@ -385,7 +387,7 @@ server <- function(input, output, session) {
                     filter(state == dR) %>% 
                     group_by(date) %>% 
                     summarise(cases=sum(cases), deaths=sum(deaths)) %>% 
-                    mutate(day = as.numeric(strftime(date, format = "%j"))) %>%
+                    mutate(day = as.numeric(difftime(date, startDate , unit="days"))) %>%
                     mutate(dailycases = round(cases - lag(cases), digits = 0), dailydeaths = round(deaths - lag(deaths), digits = 0)) %>%
                     select(date, cases, deaths, day, dailycases, dailydeaths) %>%
                     mutate(r7daDailyCases = rollmean(dailycases, 7, fill = NA), 
